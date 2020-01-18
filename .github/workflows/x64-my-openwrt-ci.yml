@@ -8,8 +8,8 @@
 name: X64-My-OpenWrt-CI
 
 on:
-  schedule:
-    - cron: 0 22 * * *
+#  schedule:
+#    - cron: 0 22 * * *
   push:
     branches: 
       - master
@@ -70,42 +70,53 @@ jobs:
         WORKFLOW: ${{ github.workflow }}
       run: |
         DATE=$(TZ=Asia/Shanghai date +%Y%m%d-%H%M)
-        NAME=$(echo $WORKFLOW | sed 's/\-CI/-/')$DATE
-        echo new release name: $NAME
-        echo "::set-output name=release_name::$NAME"
+        NAME=$(echo $WORKFLOW | sed 's/\-CI//')
+        FILE_NAME="$NAME-$DATE"
+        TAG_NAME="$DATE"
+        RELEASE_NAME="Release $DATE"
+        echo "::set-output name=file_name::$FILE_NAME"
+        echo "::set-output name=release_name::$RELEASE_NAME"
+        echo "::set-output name=tag_name::$TAG_NAME"
     - name: Assemble artifact
       run: |
           rm -rf ./artifact/
           mkdir -p ./artifact/
           find openwrt/bin/targets/ -name "*sysupgrade*bin*" | xargs -i mv -f {} ./artifact/
           find openwrt/bin/targets/ -name "*combined*img*" | xargs -i mv -f {} ./artifact/
+          find openwrt/bin/targets/ -name "*combined*vmdk*" | xargs -i mv -f {} ./artifact/
 
     - name: Upload artifact
       uses: actions/upload-artifact@master
       with:
-        name: ${{ steps.get_release_name.outputs.release_name }}
+        name: ${{ steps.get_release_name.outputs.file_name }}
         path: ./artifact/
-    - name: Create Release file
-      run: |
-          mv ./artifact ./${{ steps.get_release_name.outputs.release_name }}
-          zip openwrt ./${{ steps.get_release_name.outputs.release_name }}/*
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:  
-        tag_name: ${{ steps.get_release_name.outputs.release_name }}
-        release_name: Release ${{ steps.get_release_name.outputs.release_name }}
-        draft: false
-        prerelease: false
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} 
-        asset_path: ./openwrt.zip
-        asset_name: ${{ steps.get_release_name.outputs.release_name }}.zip
-        asset_content_type: application/zip
+    # - name: Create Release file
+    #   run: |
+    #       mv ./artifact ./${{ steps.get_release_name.outputs.file_name }}
+    #       cd ${{ steps.get_release_name.outputs.file_name }}
+    #       zip ../openwrt ./*
+    #       cd ..
+    # - name: Create Release
+    #   id: create_release
+    #   uses: actions/create-release@v1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:  
+    #     tag_name: ${{ steps.get_release_name.outputs.tag_name }}
+    #     release_name: ${{ steps.get_release_name.outputs.release_name }}
+    #     body: |
+    #       Changes in this Release
+    #       - First Change
+    #       - Second Change
+    #     draft: false
+    #     prerelease: true
+    # - name: Upload Release Asset
+    #   id: upload-release-asset 
+    #   uses: actions/upload-release-asset@v1.0.1
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }} 
+    #     asset_path: ./openwrt.zip
+    #     asset_name: ${{ steps.get_release_name.outputs.file_name }}.zip
+    #     asset_content_type: application/zip
